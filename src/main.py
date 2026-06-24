@@ -44,7 +44,10 @@ def main() -> None:
         logger.info("  %s %s %s", status, ds, path or "")
 
     if fail:
-        sys.exit(1)
+        logger.warning("Export failures — some datasets may be missing")
+        if not settings.use_stub_data:
+            sys.exit(1)
+        logger.info("(Continuing in stub mode)")
 
 
 if __name__ == "__main__":
