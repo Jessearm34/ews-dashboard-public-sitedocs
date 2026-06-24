@@ -158,41 +158,43 @@ class SiteDocsClient:
     def fetch_locations(self) -> list[dict[str, Any]]:
         """GET /api/v1/locations"""
         if not self.credentials_ready() or settings.use_stub_data:
-            return []
+            return self._stub_locations()
         return self._get_list("/api/v1/locations")
 
     def fetch_company_types(self) -> list[dict[str, Any]]:
         """GET /api/v1/companytypes"""
         if not self.credentials_ready() or settings.use_stub_data:
-            return []
+            return self._stub_company_types()
         return self._get_list("/api/v1/companytypes")
 
     def fetch_certification_types(self) -> list[dict[str, Any]]:
         """GET /api/v1/certificationtypes"""
         if not self.credentials_ready() or settings.use_stub_data:
-            return []
+            return self._stub_certification_types()
         return self._get_list("/api/v1/certificationtypes")
 
     def fetch_form_types(self) -> list[dict[str, Any]]:
         """GET /api/v1/formtypes"""
         if not self.credentials_ready() or settings.use_stub_data:
-            return []
+            return self._stub_form_types()
         return self._get_list("/api/v1/formtypes")
 
     def fetch_signatures(self) -> list[dict[str, Any]]:
         """GET /api/v1/signatures"""
         if not self.credentials_ready() or settings.use_stub_data:
-            return []
+            return self._stub_signatures()
         return self._get_paged("/api/v1/signatures")
 
     def fetch_schedules(self) -> list[dict[str, Any]]:
         """GET /api/v1/schedules/form/search"""
         if not self.credentials_ready() or settings.use_stub_data:
-            return []
+            return self._stub_schedules()
         return self._get_paged("/api/v1/schedules/form/search")
 
     # ------------------------------------------------------------------ #
-    # Stub data
+    # Stub data — every dataset gets realistic stubs so the pipeline
+    # always has something to ingest and display, even when the API
+    # is unreachable.
     # ------------------------------------------------------------------ #
 
     def _stub_workers(self) -> list[dict[str, Any]]:
@@ -302,6 +304,83 @@ class SiteDocsClient:
             {"Id": "jsa4", "Label": "Routine wellhead inspection",
              "CreatedOn": "2026-05-20", "CreatedBy": "w4",
              "_FormTypeName": "JSA Safe Work Permit", "IsDeleted": False},
+        ]
+
+    def _stub_locations(self) -> list[dict[str, Any]]:
+        return [
+            {"Id": "loc1", "Name": "Evaporator Lot 7", "Description": "Pad",
+             "Address": "Vernal, UT", "StartDate": "2022-01-01", "IsArchived": False},
+            {"Id": "loc2", "Name": "Frac Pond Alpha", "Description": "Pond",
+             "Address": "Jensen, UT", "StartDate": "2022-06-01", "IsArchived": False},
+            {"Id": "loc3", "Name": "Tomball Shop", "Description": "Shop",
+             "Address": "Tomball, TX", "StartDate": "2020-03-01", "IsArchived": False},
+            {"Id": "loc4", "Name": "Cheyenne Yard", "Description": "Yard",
+             "Address": "Cheyenne, WY", "StartDate": "2023-01-01", "IsArchived": False},
+            {"Id": "loc5", "Name": "West Region Office", "Description": "Office",
+             "Address": "Midland, TX", "StartDate": "2021-05-01", "IsArchived": False},
+        ]
+
+    def _stub_company_types(self) -> list[dict[str, Any]]:
+        return [
+            {"Id": "ct1", "Name": "Prime Contractor", "Description": "Direct EWS employees"},
+            {"Id": "ct2", "Name": "Subcontractor", "Description": "Third-party contractor"},
+            {"Id": "ct3", "Name": "Supplier", "Description": "Equipment/material supplier"},
+        ]
+
+    def _stub_certification_types(self) -> list[dict[str, Any]]:
+        return [
+            {"Id": "cty1", "Name": "H2S Awareness", "Description": "H2S safety training"},
+            {"Id": "cty2", "Name": "Confined Space Entry", "Description": "Confined space training"},
+            {"Id": "cty3", "Name": "Forklift Operator", "Description": "Forklift certification"},
+            {"Id": "cty4", "Name": "First Aid / CPR", "Description": "First aid & CPR training"},
+            {"Id": "cty5", "Name": "Rigging & Signaling", "Description": "Rigging safety"},
+            {"Id": "cty6", "Name": "Fire Watch", "Description": "Fire watch training"},
+            {"Id": "cty7", "Name": "Fall Protection", "Description": "Fall arrest training"},
+        ]
+
+    def _stub_form_types(self) -> list[dict[str, Any]]:
+        return [
+            {"Id": "ft1", "Name": "JSA Safe Work Permit", "Description": "Job Safety Analysis"},
+            {"Id": "ft2", "Name": "Pre-Start Safety Review", "Description": "Equipment pre-start check"},
+            {"Id": "ft3", "Name": "Incident Report", "Description": "Incident documentation"},
+            {"Id": "ft4", "Name": "Equipment Inspection", "Description": "Daily equipment inspection"},
+            {"Id": "ft5", "Name": "Tailgate Safety Meeting", "Description": "Daily safety briefing"},
+        ]
+
+    def _stub_signatures(self) -> list[dict[str, Any]]:
+        return [
+            {"Id": "sig1", "FormId": "jsa1", "WorkerId": "w1", "SignedOn": "2026-01-10T08:30:00", "SignatureType": "Electronic"},
+            {"Id": "sig2", "FormId": "jsa1", "WorkerId": "w2", "SignedOn": "2026-01-10T08:32:00", "SignatureType": "Electronic"},
+            {"Id": "sig3", "FormId": "jsa2", "WorkerId": "w5", "SignedOn": "2026-03-10T07:45:00", "SignatureType": "Electronic"},
+            {"Id": "sig4", "FormId": "jsa2", "WorkerId": "w1", "SignedOn": "2026-03-10T07:50:00", "SignatureType": "Electronic"},
+            {"Id": "sig5", "FormId": "jsa3", "WorkerId": "w3", "SignedOn": "2026-04-08T09:15:00", "SignatureType": "Electronic"},
+            {"Id": "sig6", "FormId": "jsa3", "WorkerId": "w2", "SignedOn": "2026-04-08T09:20:00", "SignatureType": "Electronic"},
+            {"Id": "sig7", "FormId": "jsa4", "WorkerId": "w4", "SignedOn": "2026-05-20T08:00:00", "SignatureType": "Electronic"},
+            {"Id": "sig8", "FormId": "jsa4", "WorkerId": "w1", "SignedOn": "2026-05-20T08:05:00", "SignatureType": "Electronic"},
+        ]
+
+    def _stub_schedules(self) -> list[dict[str, Any]]:
+        from datetime import datetime, timedelta
+        base = datetime.now()
+        return [
+            {"id": "sch1", "formTypeName": "JSA Safe Work Permit", "locationName": "Evaporator Lot 7",
+             "responsibleEmployeeName": "Juan Martinez", "status": "Completed",
+             "formDueOn": (base - timedelta(days=2)).isoformat()},
+            {"id": "sch2", "formTypeName": "Equipment Inspection", "locationName": "Frac Pond Alpha",
+             "responsibleEmployeeName": "Sarah Chen", "status": "Completed",
+             "formDueOn": (base - timedelta(days=1)).isoformat()},
+            {"id": "sch3", "formTypeName": "Pre-Start Safety Review", "locationName": "Tomball Shop",
+             "responsibleEmployeeName": "Mike Gonzalez", "status": "Late",
+             "formDueOn": (base - timedelta(days=5)).isoformat()},
+            {"id": "sch4", "formTypeName": "JSA Safe Work Permit", "locationName": "Cheyenne Yard",
+             "responsibleEmployeeName": "Lisa Patel", "status": "Scheduled",
+             "formDueOn": (base + timedelta(days=1)).isoformat()},
+            {"id": "sch5", "formTypeName": "Tailgate Safety Meeting", "locationName": "West Region Office",
+             "responsibleEmployeeName": "Tom Rodriguez", "status": "Overdue",
+             "formDueOn": (base - timedelta(days=14)).isoformat()},
+            {"id": "sch6", "formTypeName": "Equipment Inspection", "locationName": "Tomball Shop",
+             "responsibleEmployeeName": "Jared Barrett", "status": "Completed",
+             "formDueOn": (base - timedelta(days=0)).isoformat()},
         ]
 
     # ------------------------------------------------------------------ #

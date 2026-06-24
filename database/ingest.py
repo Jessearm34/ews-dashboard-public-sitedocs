@@ -82,7 +82,11 @@ def _ingest_folder(engine, folder: str, table: str) -> int:
         all_rows.extend(_read_csv(csv_path))
 
     if not all_rows:
-        logger.info("  %s: 0 rows (empty)", table)
+        # Create an empty table so the dashboard has something to query
+        logger.info("  %s: 0 rows (creating empty table)", table)
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS {}".format(table)))
+            conn.execute(text("CREATE TABLE IF NOT EXISTS {} (_empty BOOLEAN)".format(table)))
         return 0
 
     # Derive columns from the union of all row keys

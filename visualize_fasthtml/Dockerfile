@@ -19,17 +19,10 @@ COPY config ./config
 COPY visualize_fasthtml ./visualize_fasthtml
 COPY refresh.py ./refresh.py
 COPY database ./database
+COPY startup.sh ./startup.sh
 
-RUN mkdir -p /app/output
+RUN mkdir -p /app/output && chmod +x /app/startup.sh
 
 EXPOSE 5001
 
-CMD ["sh", "-c", "\
-  echo '═══ Exporting SiteDocs data... ═══' && \
-  python -m src.main || echo 'Export failed (API key missing?); skipping...' && \
-  echo '═══ Ingesting into warehouse... ═══' && \
-  python database/ingest.py || echo 'Ingest failed; skipping...' && \
-  echo '═══ Starting dashboard... ═══' && \
-  gunicorn -k uvicorn.workers.UvicornWorker visualize_fasthtml.app:app \
-    --bind 0.0.0.0:${PORT:-5001} --workers 2 --timeout 120 \
-"]
+CMD ["/app/startup.sh"]

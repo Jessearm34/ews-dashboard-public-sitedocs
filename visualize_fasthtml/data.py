@@ -11,10 +11,17 @@ import time
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
+
+# Load .env from project root (supports local dev without Railway env vars)
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path)
 
 _CACHE_TTL = 60
 _DATASET_CACHE: Dataset | None = None
