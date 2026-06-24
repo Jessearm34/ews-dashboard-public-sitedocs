@@ -1,0 +1,19 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: visualize_fasthtml/Dockerfile
+    image: ews-sitedocs-dashboard:latest
+    container_name: ews-sitedocs-dashboard
+    ports:
+      - '${PORT:-5001}:${PORT:-5001}'
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg2://ews:ews_local_dev@ews-warehouse:5432/warehouse}
+      - SITEDOCS_API_KEY
+      - DASHBOARD_LOGIN_EMAIL
+      - DASHBOARD_LOGIN_PASSWORD
+      - DASHBOARD_LOGIN_PASSWORD_HASH
+      - FASTHTML_SECRET_KEY
+    external_links:
+      - ews-warehouse
