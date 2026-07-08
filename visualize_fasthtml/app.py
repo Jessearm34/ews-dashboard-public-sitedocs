@@ -297,6 +297,7 @@ def kpi_row(state: dict, ds: D.Dataset):
         sched_rag = D.rag_status(sc["completion_pct"], 80, 60, good_when_high=True)
         overdue_rag = D.rag_status(sc["overdue"], 5, 15, good_when_high=False)
         part_rag = D.rag_status(wp["pct"], 80, 60, good_when_high=True)
+        brc = D.bbso_rir_counts(ds.forms)
         cards = [
             _card("Schedule Compliance", f"{sc['completion_pct']:.0f}%",
                   f"{sc['completed']}/{sc['total']} completed",
@@ -305,9 +306,12 @@ def kpi_row(state: dict, ds: D.Dataset):
                   f"+ {sc['late']} late · {sc['cancelled']} cancelled",
                   badge="●" if sc["overdue"] > 0 else "", bc="red" if sc["overdue"] > 0 else "",
                   rag=overdue_rag),
-            _card("Forms (This Month)", fc.get("month", wp.get("participating", 0)),
-                  f"{lc['total']} locations",
-                  badge=f"{fc['total']} total", bc="green"),
+            _card("BBSO", brc["total_bbso"],
+                  f"{brc['bbso_this_month']} this month · {brc['bbso_contributors']} contributors",
+                  badge="BBSO", bc="green"),
+            _card("RIR / Near Miss", brc["total_rir"],
+                  f"{brc['rir_this_month']} this month · {brc['rir_contributors']} contributors",
+                  badge="RIR", bc="green"),
             _card("Worker Participation", f"{wp['pct']:.0f}%",
                   f"{wp['participating']}/{wp['active_workers']} active workers",
                   rag=part_rag),
@@ -574,12 +578,14 @@ def section_body(state: dict, ds: D.Dataset):
             Div(panel("Schedule compliance", C.schedule_compliance(ds.schedules), "#dc2626"),
                 panel("Forms by category", C.form_category_chart(ds.forms), "#2563eb"),
                 cls="grid two"),
-            Div(panel("Monthly trend", C.forms_trend(ds.forms), "#2563eb"),
-                panel("Worker activity", C.worker_leaderboard_table(
-                    ds.workers, ds.forms, ds.signatures, ds.schedules), "#0e7490", scroll=True),
+            Div(panel("Monthly BBSO", C.bbso_trend(ds.forms), "#7c3aed"),
+                panel("Monthly RIR / Near Miss", C.rir_trend(ds.forms), "#ea580c"),
                 cls="grid two mt"),
-            Div(panel("Overdue & late items", NotStr(C.overdue_items_list(ds.schedules)),
-                "#dc2626", scroll=True), cls="grid mt"),
+            Div(panel("BBSO & RIR by worker", NotStr(C.bbso_rir_leaderboard_table(ds.workers, ds.forms)),
+                "#7c3aed", scroll=True),
+                panel("Overdue & late items", NotStr(C.overdue_items_list(ds.schedules)),
+                "#dc2626", scroll=True),
+                cls="grid mt"),
         )
 
     if sec == "workers":
