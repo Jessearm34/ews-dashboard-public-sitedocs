@@ -34,6 +34,7 @@ TABLES: list[dict] = [
     {"folder": "formtypes", "table": "sitedocs_formtypes"},
     {"folder": "signatures", "table": "sitedocs_signatures"},
     {"folder": "schedules", "table": "sitedocs_schedules"},
+    {"folder": "form_responses", "table": "sitedocs_form_responses"},
 ]
 
 

@@ -179,6 +179,73 @@ class SiteDocsClient:
             return self._stub_form_types()
         return self._get_list("/api/v1/formtypes")
 
+    def fetch_form_content(self, form_id: str) -> dict[str, Any] | None:
+        """GET /api/v1/forms/content/{formId} — field-level form responses.
+
+        Returns Content object with Groups → Items (questions + answers).
+        Returns None on failure.
+        """
+        if not self.credentials_ready() or settings.use_stub_data:
+            return None
+        try:
+            return self._get(f"/api/v1/forms/content/{form_id}")
+        except Exception:
+            return None
+
+    def fetch_form_responses(self) -> list[dict[str, Any]]:
+        """Fetch field-level responses for all BBSO and RIR forms.
+
+        Flattens Groups/Items from each form's content into flat rows:
+          FormId, FormType, GroupTitle, ItemContent, ItemType, ItemValue, Comments
+
+        This is what powers per-person activity analysis and category breakdowns.
+        """
+        if not self.credentials_ready() or settings.use_stub_data:
+            return self._stub_form_responses()
+
+        # Get all forms first
+        forms = self._get_paged("/api/v1/forms")
+        # Filter to BBSO and RIR/Near Miss
+        bbso_rir = [
+            f for f in forms
+            if f.get("DocumentTemplateName", "").upper() in ("BBSO", "RIR")
+            or "Near Miss" in f.get("DocumentTemplateName", "")
+        ]
+
+        rows: list[dict[str, Any]] = []
+        for form in bbso_rir:
+            form_id = form.get("Id") or form.get("DocumentId", "")
+            form_type = form.get("DocumentTemplateName", "")
+            created_by = form.get("CreatedBy", "")
+            created_on = form.get("CreatedOn", "")
+            location_id = form.get("LocationId", "")
+
+            content = self.fetch_form_content(form_id)
+            if not content:
+                logger.warning("  No content for form %s (%s)", form_id, form_type)
+                continue
+
+            groups = content.get("Groups", []) if isinstance(content, dict) else []
+            for group in groups:
+                group_title = group.get("Title", "")
+                items = group.get("Items", [])
+                for item in items:
+                    rows.append({
+                        "FormId": form_id,
+                        "FormType": form_type,
+                        "CreatedBy": created_by,
+                        "CreatedOn": created_on,
+                        "LocationId": location_id,
+                        "GroupTitle": group_title,
+                        "ItemContent": item.get("Content", ""),
+                        "ItemType": item.get("Type", ""),
+                        "ItemValue": str(item.get("Value", "")),
+                        "Comments": str(item.get("Comments", "")),
+                    })
+
+        logger.info("  %d form response rows from %d BBSO/RIR forms", len(rows), len(bbso_rir))
+        return rows
+
     def fetch_signatures(self) -> list[dict[str, Any]]:
         """GET /api/v1/signatures"""
         if not self.credentials_ready() or settings.use_stub_data:
@@ -383,6 +450,81 @@ class SiteDocsClient:
              "formDueOn": (base - timedelta(days=0)).isoformat()},
         ]
 
+    def _stub_form_responses(self) -> list[dict[str, Any]]:
+        """Stub form content — BBSO and Near Miss field-level data."""
+        from datetime import datetime, timedelta
+        base = datetime.now()
+        return [
+            # BBSO 1 — Sarah observed Juan grinding, mostly safe
+            {"FormId": "bbso-1", "FormType": "BBSO", "CreatedBy": "w2",
+             "CreatedOn": (base - timedelta(days=3)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "Task Information",
+             "ItemContent": "What task was being performed?",
+             "ItemType": "ShortAnswer", "ItemValue": "Hot work — grinding", "Comments": ""},
+            {"FormId": "bbso-1", "FormType": "BBSO", "CreatedBy": "w2",
+             "CreatedOn": (base - timedelta(days=3)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "PPE",
+             "ItemContent": "Hard hat worn correctly?",
+             "ItemType": "YesNo", "ItemValue": "Yes", "Comments": ""},
+            {"FormId": "bbso-1", "FormType": "BBSO", "CreatedBy": "w2",
+             "CreatedOn": (base - timedelta(days=3)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "PPE",
+             "ItemContent": "Face shield used during grinding?",
+             "ItemType": "YesNo", "ItemValue": "No", "Comments": "Flipped up between cuts (at-risk)"},
+            {"FormId": "bbso-1", "FormType": "BBSO", "CreatedBy": "w2",
+             "CreatedOn": (base - timedelta(days=3)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "Line of Fire",
+             "ItemContent": "Body clear of moving parts?",
+             "ItemType": "YesNo", "ItemValue": "Yes", "Comments": ""},
+            {"FormId": "bbso-1", "FormType": "BBSO", "CreatedBy": "w2",
+             "CreatedOn": (base - timedelta(days=3)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "Housekeeping",
+             "ItemContent": "Area clear of tripping hazards?",
+             "ItemType": "YesNo", "ItemValue": "Yes", "Comments": ""},
+            # BBSO 2 — Juan observed Mike on forklift, multiple at-risk
+            {"FormId": "bbso-2", "FormType": "BBSO", "CreatedBy": "w1",
+             "CreatedOn": (base - timedelta(days=1)).isoformat(), "LocationId": "loc3",
+             "GroupTitle": "Task Information",
+             "ItemContent": "What task was being performed?",
+             "ItemType": "ShortAnswer", "ItemValue": "Forklift operation — moving drums", "Comments": ""},
+            {"FormId": "bbso-2", "FormType": "BBSO", "CreatedBy": "w1",
+             "CreatedOn": (base - timedelta(days=1)).isoformat(), "LocationId": "loc3",
+             "GroupTitle": "PPE",
+             "ItemContent": "High-vis vest worn?",
+             "ItemType": "YesNo", "ItemValue": "No", "Comments": "In cab but not worn (at-risk)"},
+            {"FormId": "bbso-2", "FormType": "BBSO", "CreatedBy": "w1",
+             "CreatedOn": (base - timedelta(days=1)).isoformat(), "LocationId": "loc3",
+             "GroupTitle": "Line of Fire",
+             "ItemContent": "Spotter in position during reversing?",
+             "ItemType": "YesNo", "ItemValue": "No", "Comments": "No spotter (at-risk)"},
+            {"FormId": "bbso-2", "FormType": "BBSO", "CreatedBy": "w1",
+             "CreatedOn": (base - timedelta(days=1)).isoformat(), "LocationId": "loc3",
+             "GroupTitle": "Housekeeping",
+             "ItemContent": "Area clear?",
+             "ItemType": "YesNo", "ItemValue": "Yes", "Comments": ""},
+            # Near Miss — Tom involved in chemical spill near-miss
+            {"FormId": "nm-1", "FormType": "Near Miss Report/RIR (Risk Identification Report)", "CreatedBy": "w5",
+             "CreatedOn": (base - timedelta(days=5)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "Incident Details",
+             "ItemContent": "What happened?",
+             "ItemType": "ShortAnswer", "ItemValue": "HCl spill during unloading — coupling not fully seated", "Comments": ""},
+            {"FormId": "nm-1", "FormType": "Near Miss Report/RIR (Risk Identification Report)", "CreatedBy": "w5",
+             "CreatedOn": (base - timedelta(days=5)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "Incident Details",
+             "ItemContent": "Potential severity?",
+             "ItemType": "SelectSingle", "ItemValue": "High", "Comments": ""},
+            {"FormId": "nm-1", "FormType": "Near Miss Report/RIR (Risk Identification Report)", "CreatedBy": "w5",
+             "CreatedOn": (base - timedelta(days=5)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "Root Cause",
+             "ItemContent": "Root cause?",
+             "ItemType": "ShortAnswer", "ItemValue": "Worn coupling — PM gap", "Comments": ""},
+            {"FormId": "nm-1", "FormType": "Near Miss Report/RIR (Risk Identification Report)", "CreatedBy": "w5",
+             "CreatedOn": (base - timedelta(days=5)).isoformat(), "LocationId": "loc1",
+             "GroupTitle": "Corrective Actions",
+             "ItemContent": "Action taken?",
+             "ItemType": "ShortAnswer", "ItemValue": "Coupling replaced, inspection freq increased", "Comments": ""},
+        ]
+
     # ------------------------------------------------------------------ #
     # Orchestrated fetch
     # ------------------------------------------------------------------ #
@@ -403,6 +545,7 @@ class SiteDocsClient:
             "formtypes": (self.fetch_form_types, "formtypes"),
             "signatures": (self.fetch_signatures, "signatures"),
             "schedules": (self.fetch_schedules, "schedules"),
+            "form_responses": (self.fetch_form_responses, "form_responses"),
         }
 
         for definition in settings.datasets():
