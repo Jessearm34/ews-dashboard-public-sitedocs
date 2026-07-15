@@ -12,6 +12,7 @@ Authentication: ``Authorization`` header with the API token.
 from __future__ import annotations
 
 import logging
+import json
 from datetime import date, datetime
 from typing import Any
 
@@ -179,6 +180,54 @@ class SiteDocsClient:
             return self._stub_form_types()
         return self._get_list("/api/v1/formtypes")
 
+    def _clean_item_value(self, raw_value: Any) -> str:
+        """Extract human-readable text from SiteDocs field values.
+
+        SiteDocs returns structured objects for picker/list/entity fields:
+          {"Label":"Location","ListId":"uuid"}  →  "Location"
+          {"Text":"High","Value":3}              →  "High"
+          {"Name":"Juan Martinez","Id":"uuid"}  →  "Juan Martinez"
+
+        Returns the extracted text, or the original as string.
+        """
+        if raw_value is None:
+            return ""
+
+        if isinstance(raw_value, str):
+            # Already a string — try JSON parse in case it's a serialized object
+            cleaned = raw_value.replace("\t", " ").replace("\r", " ").replace("\n", " ")
+            try:
+                parsed = json.loads(cleaned)
+            except (json.JSONDecodeError, TypeError):
+                return raw_value
+            if isinstance(parsed, dict):
+                for key in ("Text", "Name", "Label", "Value", "Description", "Title"):
+                    if key in parsed and str(parsed[key]).strip():
+                        return str(parsed[key])
+                for v in parsed.values():
+                    if isinstance(v, str) and v.strip():
+                        return v
+                return str(parsed)
+            if isinstance(parsed, list):
+                parts = [str(p.get("Text", p.get("Name", p.get("Label", p)))) for p in parsed[:3]]
+                return "; ".join(p for p in parts if p)
+            return str(parsed)
+
+        if isinstance(raw_value, dict):
+            for key in ("Text", "Name", "Label", "Value", "Description", "Title"):
+                if key in raw_value and str(raw_value[key]).strip():
+                    return str(raw_value[key])
+            for v in raw_value.values():
+                if isinstance(v, str) and v.strip():
+                    return v
+            return str(raw_value)
+
+        if isinstance(raw_value, list):
+            parts = [self._clean_item_value(item) for item in raw_value[:3]]
+            return "; ".join(p for p in parts if p)
+
+        return str(raw_value)
+
     def fetch_form_content(self, form_id: str) -> dict[str, Any] | None:
         """GET /api/v1/forms/content/{formId} — field-level form responses.
 
@@ -239,8 +288,8 @@ class SiteDocsClient:
                         "GroupTitle": group_title,
                         "ItemContent": item.get("Content", ""),
                         "ItemType": item.get("Type", ""),
-                        "ItemValue": str(item.get("Value", "")),
-                        "Comments": str(item.get("Comments", "")),
+                        "ItemValue": self._clean_item_value(item.get("Value", "")),
+                        "Comments": self._clean_item_value(item.get("Comments", "")),
                     })
 
         logger.info("  %d form response rows from %d BBSO/RIR forms", len(rows), len(bbso_rir))
